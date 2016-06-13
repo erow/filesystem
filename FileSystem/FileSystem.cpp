@@ -28,28 +28,8 @@ string print_path(vector<string> path)
 		str += "/" + item;
 	return str;
 }
-bool match_mod(file_mod mod,string owner, int w)
-{
-	if (owner == current_user)
-	{
-		return mod.owner & (1 << (2 - w) );
-	}
-	else
-	{
-		return mod.other & (1 << (2 - w));
-	}
-}
-enum  ACCESS
-{
-	read = 0,
-	write = 1,
-	excute =2
-};
-enum class err_code {
-	exist,
-	access,
-	not_find
-};
+
+
 void error_info(err_code info)
 {
 	switch (info)
@@ -80,10 +60,10 @@ int main()
 		cout  << current_user <<"@"<< print_path(path) << "  $";
 		string opt, opr1, opr2;
 		cin >> opt >> opr1 >> opr2;
-		auto p = (direction*)current_dir->get_data();
+		auto p = (direction*)current_dir->open();
 		if(opt=="echo")
 		{
-			if (match_mod(p->mod, p->owner, ACCESS::excute))
+			if (p->match_mod(ACCESS::write))
 			{
 				if (p->create_file(opr2))
 					p->get_file(opr2)->m_data = opr1;
@@ -120,7 +100,7 @@ int main()
 		}
 		if(opt=="mkdir")
 		{
-			if (match_mod(p->mod, p->owner, ACCESS::excute))
+			if (p->match_mod( ACCESS::excute))
 			{
 				if (p->create_direction(opr2))
 				{
@@ -136,13 +116,7 @@ int main()
 		{
 			auto ptr = p->get_file(opr1);
 			if (ptr) {
-
-				if (match_mod(ptr->mod, ptr->owner, ACCESS::read))
-				{
-					cout << ptr->m_data << endl;
-				}
-				else
-					error_info(err_code::access);
+				cout << ptr->read()<<endl;
 			}
 			else
 			{
@@ -162,16 +136,25 @@ int main()
 		}
 		if (opt == "ls")
 		{
-			auto fun = [](ptr_base item) {
-				cout << item->get_info() << endl;
-			};
-			p->each(fun);
+			if (opr1 == "-")
+			{
+				cout << current_dir->read(); continue;
+			}
+
+			auto ptr = p->get_direction(opr1);
+			if (ptr) {
+				cout << ptr->read();
+			}
+			else
+			{
+				error_info(err_code::not_find);
+			}
 		}
 		if (opt == "cd") {
 			auto ptr=p->get_direction(opr1);
 			if (ptr)
 			{
-				if (match_mod(p->mod, p->owner, ACCESS::write))
+				if (p->match_mod(ACCESS::write))
 				{
 					current_dir = p->get_direction(opr1);
 				}
@@ -184,7 +167,7 @@ int main()
 		}
 		if (opt == "rm")
 		{
-			if (match_mod(p->mod, p->owner, ACCESS::write))
+			if (p->match_mod(ACCESS::write))
 			{
 				p->remove(opr1);
 			}
@@ -195,7 +178,7 @@ int main()
 		if (opt == "mv")
 		{
 			
-			if (match_mod(p->mod, p->owner, ACCESS::write))
+			if (p->match_mod( ACCESS::write))
 			{
 				if (!p->get_file(opr2))
 				{

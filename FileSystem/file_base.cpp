@@ -56,7 +56,17 @@ std::string file_base::get_info()
 	res += "  " + file_name;
 	return res;
 }
-
+bool file_base::match_mod(int w)
+{
+	if (owner == current_user)
+	{
+		return mod.owner & (1 << (2 - w));
+	}
+	else
+	{
+		return mod.other & (1 << (2 - w));
+	}
+}
 void file_base::setmod(std::string m)
 {
 	char own, group, other;
@@ -83,8 +93,19 @@ direction::direction(std::string name, ptr_dir parent) : file_base(name)
 	m_data[".."] = parent; parent->file_name = "..";
 }
 
-inline void * direction::get_data() {
+inline void * direction::open() {
 	return this;
+}
+
+std::string direction::read()
+{
+	if (!match_mod(ACCESS::read))
+		return "you have not read access\n";
+	std::string res;
+	for(auto item:m_data) {
+		res+=item.second->get_info()+"\n";
+	};
+	return res;
 }
 
 bool direction::create_file(std::string name)
@@ -132,7 +153,7 @@ ptr_file direction::get_file(std::string name)
 	}
 	auto ptr = m_data[name];
 	if (ptr->mod.type == file_type::file) {
-		return tmp_file( (mfile*)ptr->get_data(), [](mfile*) {}) ;
+		return tmp_file( (mfile*)ptr->open(), [](mfile*) {}) ;
 	}
 		
 	return tmp_file(nullptr, [](mfile*) {});
@@ -146,13 +167,18 @@ ptr_dir direction::get_direction(std::string name)
 	}
 	auto ptr = m_data[name];
 	if (ptr->mod.type == file_type::folder) {
-		return tmp_dir((direction*)ptr->get_data(), [](direction*) {});
+		return tmp_dir((direction*)ptr->open(), [](direction*) {});
 	}
 	return tmp_dir(nullptr, [](direction*) {});
 }
 
 inline mfile::mfile(std::string name) :file_base(name) { mod.type = file_type::file; }
 
-inline void * mfile::get_data() {
+inline void * mfile::open() {
 	return this;
+}
+
+std::string mfile::read()
+{
+	return m_data;
 }

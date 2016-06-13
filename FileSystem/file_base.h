@@ -15,6 +15,19 @@ struct file_mod
 		owner : 3, group : 3, other : 3;
 
 };
+
+enum  ACCESS
+{
+	read = 0,
+	write = 1,
+	excute = 2
+};
+enum class err_code {
+	exist,
+	access,
+	not_find
+};
+
 extern std::string current_user;
 class file_base
 {
@@ -29,14 +42,17 @@ public:
 
 	std::string get_info();
 	void setmod(std::string m);
-	virtual void * get_data()=0;
+	bool match_mod( int w);
+	virtual std::string read()=0;
+	virtual void * open()=0;
 };
 class mfile :public file_base
 {
 public:
 	mfile(std::string name);
 	~mfile() = default;
-	void* get_data() final;
+	void* open() final;
+	std::string read() final;
 	std::string m_data;
 };
 class direction;
@@ -54,7 +70,8 @@ public:
 	direction(std::string name);
 	direction(std::string name,ptr_dir parent);
 	~direction() = default;
-	void* get_data();
+	void* open();
+	std::string read() final;
 	bool create_file(std::string name);
 	bool create_direction(std::string name);
 	bool remove(std::string name);
